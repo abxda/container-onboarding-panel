@@ -26,7 +26,12 @@ La **imagen** se resuelve por arquitectura (`container-image-amd64` /
 - `internal/podman` — motor host-side (detect, machine, load, run, status, stop). ✅ probado.
 - `internal/fetch` — manifest de HF + descarga + verificación SHA-256. ✅ probado.
 - `cmd/quasarctl` — CLI de pruebas del motor: `detect | manifest | prepare | up <notebooks> | down`.
-- **Pendiente**: envolverlo en la UI **Wails** (portada del panel de Vagrant) y compilar por SO.
+- **UI Wails** (`main.go` · `app.go` · `frontend/`) — dos capas (Preparación +
+  Mi laboratorio), polling de estado, consola de registro, barra de progreso de
+  descarga y cierre limpio (`beforeClose` detiene el contenedor). ✅ compila y
+  corre en `windows/amd64` (detecta Podman 5.3.2 real, gating correcto).
+- **Pendiente**: compilar `darwin/arm64` (agente Mac) y `linux/amd64` (agente
+  Linux), publicar los launchers y activar la vía en el meta-launcher vía `.launch`.
 
 ## Probar el motor (sin GUI)
 ```bash

@@ -3,3 +3,4 @@
 quasarctl
 .hf_token
 .github_token
+*.tar.gz

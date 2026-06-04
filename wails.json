@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "container-onboarding-panel",
+  "outputfilename": "container-onboarding-panel",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "wailsjsdir": "./frontend",
+  "author": {
+    "name": "Dr. Abel Coronado"
+  },
+  "info": {
+    "companyName": "Big Data Lab",
+    "productName": "Panel de Onboarding (Container)",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright (c) 2026 Dr. Abel Coronado",
+    "comments": "3ª vía del laboratorio de Big Data: panel guiado que lleva al alumno de cero a correr el lab en un contenedor Podman desde una imagen precompilada."
+  }
+}

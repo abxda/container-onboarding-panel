@@ -1,0 +1,5 @@
+/build/
+*.exe
+quasarctl
+.hf_token
+.github_token

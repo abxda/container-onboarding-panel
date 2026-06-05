@@ -144,6 +144,11 @@ const actions = {
     }),
     jupyter: () => App().OpenJupyter(),
     hdfs: () => App().OpenHDFS(),
+    folder: () => App().OpenWorkFolder(),
+    smoke: () => withBusy("Descargando el cuaderno de prueba (TestGlobalBigData)…", async () => {
+        const r = await App().DownloadSmokeTest();
+        if (!r.ok) logline("ERROR", r.message);
+    }),
 };
 
 function wire() {

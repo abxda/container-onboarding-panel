@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -239,6 +241,63 @@ func (a *App) StopLab() Result {
 
 func (a *App) OpenJupyter() { wruntime.BrowserOpenURL(a.ctx, "http://localhost:8888") }
 func (a *App) OpenHDFS()    { wruntime.BrowserOpenURL(a.ctx, "http://localhost:9870") }
+
+// OpenWorkFolder abre la carpeta de trabajo (tus cuadernos) en el explorador del SO.
+// Es la MISMA carpeta que se monta dentro de Jupyter como /home/quasar/work.
+func (a *App) OpenWorkFolder() Result {
+	dir := a.workDir()
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", dir)
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	default:
+		cmd = exec.Command("xdg-open", dir)
+	}
+	podman.Hide(cmd)
+	_ = cmd.Start() // explorer devuelve códigos no-cero aun con éxito: no lo tratamos como error
+	a.log("INFO", "Abriendo tu carpeta de trabajo: "+dir)
+	return Result{OK: true, Message: dir}
+}
+
+// smokeURL es el cuaderno de prueba (TestGlobalBigData) para la variante Container (Spark 4.0).
+const smokeURL = "https://huggingface.co/datasets/abxda/bdp-lab/resolve/main/cuadernos/semana_2/container/TestGlobalBigData.ipynb"
+
+// DownloadSmokeTest baja el cuaderno de prueba a la carpeta de trabajo, listo para
+// abrirlo en Jupyter (verifica HDFS + Spark + Elasticsearch de extremo a extremo).
+func (a *App) DownloadSmokeTest() Result {
+	dest := filepath.Join(a.workDir(), "TestGlobalBigData.ipynb")
+	a.log("INFO", "Descargando el cuaderno de prueba (TestGlobalBigData)…")
+	if err := downloadFile(smokeURL, dest); err != nil {
+		a.log("ERROR", "No pude descargar el cuaderno: "+err.Error())
+		return Result{OK: false, Message: err.Error()}
+	}
+	a.log("INFO", "✓ Cuaderno guardado en tu carpeta de trabajo. Ábrelo en Jupyter (carpeta work) y ejecútalo de arriba a abajo.")
+	return Result{OK: true, Message: dest}
+}
+
+// downloadFile descarga una URL a un archivo local (para ficheros pequeños como cuadernos).
+func downloadFile(url, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d al descargar %s", resp.StatusCode, url)
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, resp.Body)
+	return err
+}
 
 // workDir es la carpeta de notebooks que se monta en el contenedor.
 func (a *App) workDir() string {

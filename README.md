@@ -33,6 +33,14 @@ La **imagen** se resuelve por arquitectura (`container-image-amd64` /
 - **Pendiente**: compilar `darwin/arm64` (agente Mac) y `linux/amd64` (agente
   Linux), publicar los launchers y activar la vía en el meta-launcher vía `.launch`.
 
+## Publicar / actualizar
+Este panel es la **vía Container** (Spark 4.0 / Scala 2.13). Se distribuye como
+`bdp-container-launcher-<os>-<arch>.tar.gz` (panel chico) + la **imagen** Podman
+aparte. El botón **"Cuaderno de prueba"** baja `cuadernos/semana_2/container/
+TestGlobalBigData.ipynb`. Rutina completa de release (tarball+manifest anti-clobber
+para el panel; imagen pesada por separado): **`Curso_BDP/PUBLICAR_Y_ACTUALIZAR.md`
+§4 y §5**. Arquitectura general: `Curso_BDP/DEPLOY_MULTIOS.md`.
+
 ## Probar el motor (sin GUI)
 ```bash
 go run ./cmd/quasarctl detect      # estado de podman/máquina/imagen/servicios

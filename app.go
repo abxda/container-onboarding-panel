@@ -115,6 +115,13 @@ func (a *App) Diagnose() Snapshot {
 // InstallPodman instala Podman con el mecanismo nativo del SO (sin asumir nada).
 func (a *App) InstallPodman() Result {
 	a.log("INFO", "Instalando Podman… ("+podman.InstallHint()+")")
+	if runtime.GOOS == "windows" {
+		a.log("WARN", "DEPENDENCIAS: en Windows, Podman corre sobre WSL2, que requiere VIRTUALIZACIÓN "+
+			"por hardware. Activa: 'Subsistema de Windows para Linux (WSL2)', 'Plataforma de máquina "+
+			"virtual' y 'Plataforma de hipervisor de Windows', y la virtualización (SVM/VT-x) en la BIOS.")
+		a.log("WARN", "Si este equipo es una MÁQUINA VIRTUAL o no tiene virtualización, Podman NO podrá "+
+			"funcionar: usa la EDICIÓN PORTABLE (no necesita WSL2 ni VirtualBox).")
+	}
 	ctx := context.Background()
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
@@ -131,14 +138,23 @@ do shell script "installer -pkg /tmp/podman.pkg -target /" with administrator pr
 		cmd = exec.CommandContext(ctx, "pkexec", "sh", "-c",
 			"apt-get install -y podman || dnf install -y podman || pacman -S --noconfirm podman")
 	}
+	podman.Hide(cmd) // sin ventana de consola en Windows (evita el parpadeo)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		a.log("ERROR", "No pude instalar Podman automáticamente: "+err.Error())
-		return Result{OK: false, Message: "Instala Podman manualmente: " + podman.InstallHint()}
+		if runtime.GOOS == "windows" {
+			a.log("WARN", "Causa típica: falta WSL2 / virtualización (frecuente en máquinas virtuales). "+
+				"Cierra este launcher y usa la EDICIÓN PORTABLE, o activa WSL2 + virtualización y reinicia. "+
+				"No reintentes aquí en bucle.")
+		}
+		return Result{OK: false, Message: "No se pudo instalar Podman. Si tu equipo es una VM o no tiene " +
+			"virtualización, usa la Edición Portable. Manual: " + podman.InstallHint()}
 	}
 	_ = out
 	if runtime.GOOS == "windows" {
-		a.log("WARN", "En Windows, Podman usa WSL2. Si es la primera vez, quizá debas reiniciar y volver a abrir.")
+		a.log("WARN", "Podman instalado. La 1ª vez quizá debas REINICIAR Windows (para que WSL2 quede activo) "+
+			"y volver a abrir el launcher. Si tras reiniciar sigue sin detectarse Podman, tu equipo probablemente "+
+			"no tiene virtualización → usa la Edición Portable.")
 	}
 	a.log("INFO", "Podman instalado.")
 	return Result{OK: true, Message: "Podman instalado."}

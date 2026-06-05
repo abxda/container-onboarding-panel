@@ -37,7 +37,9 @@ var Ports = []int{8888, 9870, 9000, 9200, 9092}
 func bin() string { return "podman" }
 
 func run(ctx context.Context, args ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, bin(), args...).CombinedOutput()
+	cmd := exec.CommandContext(ctx, bin(), args...)
+	Hide(cmd) // sin ventana de consola (evita el parpadeo en la GUI)
+	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
 
@@ -107,7 +109,9 @@ func LoadImage(ctx context.Context, tarGzPath string) error {
 
 // HasImage indica si la imagen del lab ya está cargada.
 func HasImage(ctx context.Context) bool {
-	return exec.CommandContext(ctx, bin(), "image", "exists", ImageTag).Run() == nil
+	cmd := exec.CommandContext(ctx, bin(), "image", "exists", ImageTag)
+	Hide(cmd)
+	return cmd.Run() == nil
 }
 
 // Up arranca el contenedor del lab: 5 puertos + volumen de notebooks. El sufijo

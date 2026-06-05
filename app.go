@@ -249,14 +249,20 @@ func (a *App) OpenWorkFolder() Result {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
+		// OJO: NO uses CREATE_NO_WINDOW/HideWindow con explorer.exe — esa bandera
+		// impide que el Explorador abra la ventana. Es app GUI, no abre consola.
 		cmd = exec.Command("explorer", dir)
 	case "darwin":
 		cmd = exec.Command("open", dir)
 	default:
 		cmd = exec.Command("xdg-open", dir)
 	}
-	podman.Hide(cmd)
-	_ = cmd.Start() // explorer devuelve códigos no-cero aun con éxito: no lo tratamos como error
+	// explorer.exe devuelve exit code no-cero aun con éxito; por eso Start (no Run)
+	// y solo reportamos si NO se pudo lanzar el proceso.
+	if err := cmd.Start(); err != nil {
+		a.log("ERROR", "No pude abrir la carpeta ("+dir+"): "+err.Error())
+		return Result{OK: false, Message: err.Error()}
+	}
 	a.log("INFO", "Abriendo tu carpeta de trabajo: "+dir)
 	return Result{OK: true, Message: dir}
 }

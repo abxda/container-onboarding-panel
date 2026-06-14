@@ -1,0 +1,96 @@
+name: build-macos
+
+# Compila el panel Container (Podman) para macOS en un runner Apple Silicon
+# (gratis, vigente) y produce un binario UNIVERSAL (Intel + Apple Silicon).
+# Cubre Mac Intel sin depender del runner Intel ya deprecado.
+#
+# Disparo manual: pestaña Actions -> "build-macos" -> Run workflow.
+# Para publicar a Hugging Face, agrega el secret HF_TOKEN al repo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_hf:
+        description: "Publicar el .tar.gz a Hugging Face (requiere secret HF_TOKEN)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15            # Apple Silicon; cross-construye universal
+    env:
+      APP: container-onboarding-panel
+      TAR: bdp-container-macos-amd64.tar.gz
+      BASE: darwin-amd64-container
+      HF_REPO: abxda/bdp-lab
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Instalar Wails CLI (v2.12.0, igual que go.mod)
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Compilar panel (universal = Intel + Apple Silicon)
+        run: |
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          wails build -platform darwin/universal -clean
+
+      - name: Firma ad-hoc (reduce fricción de Gatekeeper; no requiere certificado)
+        run: |
+          APPNAME=$(ls -d build/bin/*.app | head -1)
+          codesign --force --deep --sign - "$APPNAME" || true
+
+      - name: Empaquetar .tar.gz + SHA-256
+        id: pack
+        run: |
+          cd build/bin
+          APPNAME=$(ls -d *.app | head -1 | xargs -n1 basename)
+          tar -czf "$GITHUB_WORKSPACE/$TAR" "$APPNAME"
+          cd "$GITHUB_WORKSPACE"
+          SHA=$(shasum -a 256 "$TAR" | awk '{print $1}')
+          echo "launch=$APPNAME" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA"       >> "$GITHUB_OUTPUT"
+          echo "Empaquetado $TAR  ($APPNAME)  sha256=$SHA"
+
+      - name: Subir artefacto de la corrida (siempre, por si no publicas a HF)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.TAR }}
+          path: ${{ env.TAR }}
+
+      - name: Publicar a Hugging Face (opcional)
+        if: ${{ inputs.publish_hf }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning::No hay secret HF_TOKEN; omito la publicación. El .tar.gz quedó como artefacto de la corrida."
+            exit 0
+          fi
+          python3 -m pip install --quiet --break-system-packages huggingface_hub || python3 -m pip install --quiet huggingface_hub
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          tar = os.environ["TAR"]
+          api.upload_file(path_or_fileobj=tar, path_in_repo=tar,
+              repo_id=os.environ["HF_REPO"], repo_type="dataset",
+              commit_message="panel macOS universal: " + os.environ["BASE"])
+          print("Subido a HF:", tar)
+          PY
+
+      - name: Líneas listas para agregar al manifest.txt
+        run: |
+          URL="https://huggingface.co/datasets/${HF_REPO}/resolve/main/${TAR}"
+          echo "==================== COPIA A manifest.txt ===================="
+          echo "${BASE}.file=${TAR}"
+          echo "${BASE}.url=${URL}"
+          echo "${BASE}.sha256=${{ steps.pack.outputs.sha }}"
+          echo "${BASE}.launch=${{ steps.pack.outputs.launch }}"
+          echo "=============================================================="

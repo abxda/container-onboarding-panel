@@ -23,7 +23,7 @@ jobs:
     runs-on: macos-15            # Apple Silicon; cross-construye universal
     env:
       APP: container-onboarding-panel
-      TAR: bdp-container-macos-amd64.tar.gz
+      TAR: bdp-container-launcher-macos-amd64.tar.gz
       BASE: darwin-amd64-container
       HF_REPO: abxda/bdp-lab
     steps:
